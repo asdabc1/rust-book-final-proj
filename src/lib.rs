@@ -1,18 +1,12 @@
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::fs::File;
+use std::thread;
+use std::time::Duration;
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+pub mod thread_pool;
 
-    for stream in listener.incoming() {
-        let stream = stream.unwrap();
-
-        handle_connection(stream);
-    }
-}
-
-fn handle_connection(mut stream: TcpStream) {
+pub fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 512];
     stream.read(&mut buffer).unwrap();
 
@@ -22,9 +16,16 @@ fn handle_connection(mut stream: TcpStream) {
     stream.flush().unwrap();
 }
 
-fn router(request: String) -> String {
+pub fn router(request: String) -> String {
     if target("/", &request) {
         let contents = html("hello.html");
+
+        http_response(200, "OK", contents)
+    }
+    else if target("/sleep", &request) {
+        let contents = html("hello.html");
+
+        thread::sleep(Duration::from_secs(5));
 
         http_response(200, "OK", contents)
     }
@@ -35,12 +36,12 @@ fn router(request: String) -> String {
     }
 }
 
-fn target(target: &str, request: &String) -> bool {
+pub fn target(target: &str, request: &String) -> bool {
     let temp = format!("GET {} HTTP/1.1\r\n", target);
     request.starts_with(temp.as_str())
 }
 
-fn html(filename: &str) -> String {
+pub fn html(filename: &str) -> String {
     let mut file = File::open(filename).unwrap();
 
     let mut contents = String::new();
@@ -49,6 +50,6 @@ fn html(filename: &str) -> String {
     contents
 }
 
-fn http_response(response_code: u16, response_message: &str, content: String) -> String {
+pub fn http_response(response_code: u16, response_message: &str, content: String) -> String {
     format!("HTTP/1.1 {} {}\r\n\r\n{}", response_code, response_message, content)
 }
